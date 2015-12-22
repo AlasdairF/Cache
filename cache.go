@@ -129,7 +129,7 @@ func (c *Bytes) Purge(olderThan int64) {
 
 // Creates a new cache
 func New(size int, megabytes int64) *Interface {
-	c := &Interface{vals: make([]*entryBytes, size), size: size, max: megabytes * 1024}
+	c := &Interface{vals: make([]*entryInterface, size), size: size, max: megabytes * 1024}
 	cachesMutex2.Lock()
 	caches2 = append(caches2, c)
 	cachesMutex2.Unlock()
@@ -179,7 +179,7 @@ func (c *Interface) Replace(id int, p []byte, size int64) {
 		atomic.AddInt64(&c.mem, size)
 	} else {
 		item.mutex.Lock()
-		size -= item.Size
+		size -= item.size
 		item.data = p
 		item.lastAccess = tim
 		item.mutex.Unlock()
