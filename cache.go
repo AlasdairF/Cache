@@ -10,17 +10,31 @@ const (
 	sleeptime = time.Minute
 )
 
-var caches []*bytes
-var bytesMutex sync.Mutex
+var caches1 []*Bytes
+var caches2 []*Interface
+var cachesMutex1 sync.Mutex
+var cachesMutex2 sync.Mutex
 
-type entry struct {
+type entryBytes struct {
 	mutex sync.Mutex
 	lastAccess int64
 	data []byte
 }
 
-type bytes struct {
-	vals []*entry
+type Bytes struct {
+	vals []*entryBytes
+	mem, max int64
+	size int
+}
+
+type entryInterface struct {
+	mutex sync.Mutex
+	lastAccess int64
+	data interface{}
+}
+
+type Interface struct {
+	vals []*entryInterface
 	mem, max int64
 	size int
 }
@@ -30,16 +44,16 @@ func init() {
 }
 
 // Creates a new cache
-func New(size int, megabytes int64) *bytes {
-	c := &bytes{vals: make([]*entry, size), size: size, max: megabytes * 1024}
-	bytesMutex.Lock()
-	caches = append(caches, c)
-	bytesMutex.Unlock()
+func NewBytes(size int, megabytes int64) *Bytes {
+	c := &bytes{vals: make([]*entryBytes, size), size: size, max: megabytes * 1024}
+	cachesMutex1.Lock()
+	caches1 = append(caches1, c)
+	cachesMutex1.Unlock()
 	return c
 }
 
 // Gets the slice of bytes assigned to this ID in the cache
-func (c *bytes) Get(id int) ([]byte, bool) {
+func (c *Bytes) Get(id int) ([]byte, bool) {
 	if id >= c.size {
 		return nil, false
 	}
@@ -56,27 +70,27 @@ func (c *bytes) Get(id int) ([]byte, bool) {
 }
 
 // Caches the item, does nothing if it already exists
-func (c *bytes) Store(id int, p []byte) {
+func (c *Bytes) Store(id int, p []byte) {
 	if id >= c.size {
 		return
 	}
 	item := c.vals[id]
 	if item == nil {
-		item = &entry{data: p, lastAccess: time.Now().Unix()}
+		item = &entryBytes{data: p, lastAccess: time.Now().Unix()}
 		c.vals[id] = item
 		atomic.AddInt64(&c.mem, int64(len(p)))
 	}
 }
 
 // Caches the item, replaces it if it already exists
-func (c *bytes) Replace(id int, p []byte) {
+func (c *Bytes) Replace(id int, p []byte) {
 	if id >= c.size {
 		return
 	}
 	tim := time.Now().Unix()
 	item := c.vals[id]
 	if item == nil {
-		item = &entry{data: p, lastAccess: tim}
+		item = &entryBytes{data: p, lastAccess: tim}
 		c.vals[id] = item
 		atomic.AddInt64(&c.mem, int64(len(p)))
 	} else {
@@ -90,7 +104,7 @@ func (c *bytes) Replace(id int, p []byte) {
 }
 
 // Closes the cache, releasing the memory
-func (c *bytes) Close() {
+func (c *Bytes) Close() {
 	c.size = 0
 	c.vals = nil
 	c.mem = 0
@@ -98,7 +112,7 @@ func (c *bytes) Close() {
 }
 
 // Removes all entries in the cache last accessed less than this time ago (UNIX Timestamp)
-func (c *bytes) Purge(olderThan int64) {
+func (c *Bytes) Purge(olderThan int64) {
 	for i, item := range c.vals {
 		if item != nil {
 			item.mutex.Lock()
@@ -111,14 +125,99 @@ func (c *bytes) Purge(olderThan int64) {
 	}
 }
 
+
+// Creates a new cache
+func New(size int, megabytes int64) *Interface {
+	c := &bytes{vals: make([]*entryBytes, size), size: size, max: megabytes * 1024}
+	cachesMutex2.Lock()
+	caches2 = append(caches2, c)
+	cachesMutex2.Unlock()
+	return c
+}
+
+// Gets the slice of bytes assigned to this ID in the cache
+func (c *Interface) Get(id int) (interface{}, bool) {
+	if id >= c.size {
+		return nil, false
+	}
+	item := c.vals[id]
+	if item == nil {
+		return nil, false
+	}
+	tim := time.Now().Unix()
+	item.mutex.Lock()
+	item.lastAccess = tim
+	res := item.data
+	item.mutex.Unlock()
+	return res, true
+}
+
+// Caches the item, does nothing if it already exists
+func (c *Interface) Store(id int, p interface{}) {
+	if id >= c.size {
+		return
+	}
+	item := c.vals[id]
+	if item == nil {
+		item = &entryBytes{data: p, lastAccess: time.Now().Unix()}
+		c.vals[id] = item
+		atomic.AddInt64(&c.mem, int64(p.Size()))
+	}
+}
+
+// Caches the item, replaces it if it already exists
+func (c *Interface) Replace(id int, p []byte) {
+	if id >= c.size {
+		return
+	}
+	tim := time.Now().Unix()
+	item := c.vals[id]
+	if item == nil {
+		item = &entryBytes{data: p, lastAccess: tim}
+		c.vals[id] = item
+		atomic.AddInt64(&c.mem, iint64(p.Size()))
+	} else {
+		item.mutex.Lock()
+		memdif := p.Size() - item.data.Size()
+		item.data = p
+		item.lastAccess = tim
+		item.mutex.Unlock()
+		atomic.AddInt64(&c.mem, int64(memdif))
+	}
+}
+
+// Closes the cache, releasing the memory
+func (c *Interface) Close() {
+	c.size = 0
+	c.vals = nil
+	c.mem = 0
+	c.max = 0
+}
+
+// Removes all entries in the cache last accessed less than this time ago (UNIX Timestamp)
+func (c *Interface) Purge(olderThan int64) {
+	for i, item := range c.vals {
+		if item != nil {
+			item.mutex.Lock()
+			if item.lastAccess < olderThan {
+				atomic.AddInt64(&c.mem, 0 - int64(item.data.Size()))
+				c.vals[i] = nil
+			}
+			item.mutex.Unlock()
+		}
+	}
+}
+
+
 // Automatically purges all caches
 func cleaner() {
 	for {
 		time.Sleep(sleeptime)
-		bytesMutex.Lock()
-		newCachesSlice := caches
-		bytesMutex.Unlock()
-		for _, c := range newCachesSlice {
+		
+		cachesMutex1.Lock()
+		newCachesSlice1 := caches1
+		cachesMutex1.Unlock()
+		for _, c := range newCachesSlice1 {
 			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
 				c.Purge(time.Now().Unix() - 86400) // 1 day ago
 			} else {
@@ -140,5 +239,32 @@ func cleaner() {
 				continue
 			}
 		}
+		
+		cachesMutex2.Lock()
+		newCachesSlice2 := caches2
+		cachesMutex2.Unlock()
+		for _, c := range newCachesSlice2 {
+			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+				c.Purge(time.Now().Unix() - 86400) // 1 day ago
+			} else {
+				continue
+			}
+			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+				c.Purge(time.Now().Unix() - 3600) // 1 hour ago
+			} else {
+				continue
+			}
+			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+				c.Purge(time.Now().Unix() - 600) // 10 minutes ago
+			} else {
+				continue
+			}
+			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+				c.Purge(time.Now().Unix() + 3600) // everything
+			} else {
+				continue
+			}
+		}
+		
 	}
 }
