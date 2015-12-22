@@ -40,7 +40,7 @@ func New(size int, megabytes int64) *bytes {
 
 // Gets the slice of bytes assigned to this ID in the cache
 func (c *bytes) Get(id int) ([]byte, bool) {
-	if id >= size {
+	if id >= c.size {
 		return nil, false
 	}
 	item := c.vals[id]
@@ -57,7 +57,7 @@ func (c *bytes) Get(id int) ([]byte, bool) {
 
 // Caches the item, does nothing if it already exists
 func (c *bytes) Store(id int, p []byte) {
-	if id >= size {
+	if id >= c.size {
 		return
 	}
 	item := c.vals[id]
@@ -70,7 +70,7 @@ func (c *bytes) Store(id int, p []byte) {
 
 // Caches the item, replaces it if it already exists
 func (c *bytes) Replace(id int, p []byte) {
-	if id >= size {
+	if id >= c.size {
 		return
 	}
 	tim := time.Now().Unix()
