@@ -31,6 +31,7 @@ type entryInterface struct {
 	mutex sync.Mutex
 	lastAccess int64
 	data interface{}
+	size int64
 }
 
 type Interface struct {
@@ -45,7 +46,7 @@ func init() {
 
 // Creates a new cache
 func NewBytes(size int, megabytes int64) *Bytes {
-	c := &bytes{vals: make([]*entryBytes, size), size: size, max: megabytes * 1024}
+	c := &Bytes{vals: make([]*entryBytes, size), size: size, max: megabytes * 1024}
 	cachesMutex1.Lock()
 	caches1 = append(caches1, c)
 	cachesMutex1.Unlock()
@@ -128,7 +129,7 @@ func (c *Bytes) Purge(olderThan int64) {
 
 // Creates a new cache
 func New(size int, megabytes int64) *Interface {
-	c := &bytes{vals: make([]*entryBytes, size), size: size, max: megabytes * 1024}
+	c := &Interface{vals: make([]*entryBytes, size), size: size, max: megabytes * 1024}
 	cachesMutex2.Lock()
 	caches2 = append(caches2, c)
 	cachesMutex2.Unlock()
@@ -153,36 +154,36 @@ func (c *Interface) Get(id int) (interface{}, bool) {
 }
 
 // Caches the item, does nothing if it already exists
-func (c *Interface) Store(id int, p interface{}) {
+func (c *Interface) Store(id int, p interface{}, size int64) {
 	if id >= c.size {
 		return
 	}
 	item := c.vals[id]
 	if item == nil {
-		item = &entryBytes{data: p, lastAccess: time.Now().Unix()}
+		item = &entryInterface{data: p, lastAccess: time.Now().Unix(), size: size}
 		c.vals[id] = item
-		atomic.AddInt64(&c.mem, int64(p.Size()))
+		atomic.AddInt64(&c.mem, size)
 	}
 }
 
 // Caches the item, replaces it if it already exists
-func (c *Interface) Replace(id int, p []byte) {
+func (c *Interface) Replace(id int, p []byte, size int64) {
 	if id >= c.size {
 		return
 	}
 	tim := time.Now().Unix()
 	item := c.vals[id]
 	if item == nil {
-		item = &entryBytes{data: p, lastAccess: tim}
+		item = &entryInterface{data: p, lastAccess: tim, size: size}
 		c.vals[id] = item
-		atomic.AddInt64(&c.mem, iint64(p.Size()))
+		atomic.AddInt64(&c.mem, size)
 	} else {
 		item.mutex.Lock()
-		memdif := p.Size() - item.data.Size()
+		size -= item.Size
 		item.data = p
 		item.lastAccess = tim
 		item.mutex.Unlock()
-		atomic.AddInt64(&c.mem, int64(memdif))
+		atomic.AddInt64(&c.mem, size)
 	}
 }
 
@@ -200,7 +201,7 @@ func (c *Interface) Purge(olderThan int64) {
 		if item != nil {
 			item.mutex.Lock()
 			if item.lastAccess < olderThan {
-				atomic.AddInt64(&c.mem, 0 - int64(item.data.Size()))
+				atomic.AddInt64(&c.mem, 0 - item.size)
 				c.vals[i] = nil
 			}
 			item.mutex.Unlock()
