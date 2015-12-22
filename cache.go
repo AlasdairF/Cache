@@ -22,6 +22,7 @@ type entry struct {
 type bytes struct {
 	vals []*entry
 	mem, max int64
+	size int
 }
 
 func init() {
@@ -30,7 +31,7 @@ func init() {
 
 // Creates a new cache
 func New(size int, megabytes int64) *bytes {
-	c := &bytes{vals: make([]*entry, size), max: megabytes * 1024}
+	c := &bytes{vals: make([]*entry, size), size: size, max: megabytes * 1024}
 	bytesMutex.Lock()
 	caches = append(caches, c)
 	bytesMutex.Unlock()
@@ -39,6 +40,9 @@ func New(size int, megabytes int64) *bytes {
 
 // Gets the slice of bytes assigned to this ID in the cache
 func (c *bytes) Get(id int) ([]byte, bool) {
+	if id >= size {
+		return nil, false
+	}
 	item := c.vals[id]
 	if item == nil {
 		return nil, false
@@ -53,6 +57,9 @@ func (c *bytes) Get(id int) ([]byte, bool) {
 
 // Caches the item, does nothing if it already exists
 func (c *bytes) Store(id int, p []byte) {
+	if id >= size {
+		return
+	}
 	item := c.vals[id]
 	if item == nil {
 		item = &entry{data: p, lastAccess: time.Now().Unix()}
@@ -63,6 +70,9 @@ func (c *bytes) Store(id int, p []byte) {
 
 // Caches the item, replaces it if it already exists
 func (c *bytes) Replace(id int, p []byte) {
+	if id >= size {
+		return
+	}
 	tim := time.Now().Unix()
 	item := c.vals[id]
 	if item == nil {
@@ -81,8 +91,10 @@ func (c *bytes) Replace(id int, p []byte) {
 
 // Closes the cache, releasing the memory
 func (c *bytes) Close() {
+	c.size = 0
 	c.vals = nil
-	mem, max = 0
+	c.mem = 0
+	c.max = 0
 }
 
 // Removes all entries in the cache last accessed less than this time ago (UNIX Timestamp)
