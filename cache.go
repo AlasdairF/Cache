@@ -3,6 +3,7 @@ package cache
 import (
 	"time"
 	"sync"
+	"sync/atomic"
 )
 
 const (
