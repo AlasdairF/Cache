@@ -10,8 +10,8 @@ const (
 	sleeptime = time.Minute
 )
 
-caches []*bytes
-bytesMutex sync.Mutex
+var caches []*bytes
+var bytesMutex sync.Mutex
 
 type entry struct {
 	mutex sync.Mutex
