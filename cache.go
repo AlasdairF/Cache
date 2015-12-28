@@ -126,7 +126,6 @@ func (c *Bytes) Purge(olderThan int64) {
 	}
 }
 
-
 // Creates a new cache
 func New(size int, megabytes int64) *Interface {
 	c := &Interface{vals: make([]*entryInterface, size), size: size, max: megabytes * 1024}
@@ -214,7 +213,7 @@ func (c *Interface) Purge(olderThan int64) {
 func cleaner() {
 	for {
 		time.Sleep(sleeptime)
-		
+		// Clean []byte cache
 		cachesMutex1.Lock()
 		newCachesSlice1 := caches1
 		cachesMutex1.Unlock()
@@ -240,7 +239,7 @@ func cleaner() {
 				continue
 			}
 		}
-		
+		// Clean interface{} cache
 		cachesMutex2.Lock()
 		newCachesSlice2 := caches2
 		cachesMutex2.Unlock()
