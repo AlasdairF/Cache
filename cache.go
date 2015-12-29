@@ -46,7 +46,7 @@ func init() {
 
 // Creates a new cache
 func NewBytes(size int, megabytes int64) *Bytes {
-	c := &Bytes{vals: make([]*entryBytes, size), size: size, max: megabytes * 1024}
+	c := &Bytes{vals: make([]*entryBytes, size), size: size, max: megabytes * 1048576}
 	cachesMutex1.Lock()
 	caches1 = append(caches1, c)
 	cachesMutex1.Unlock()
