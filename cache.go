@@ -219,6 +219,11 @@ func cleaner() {
 		cachesMutex1.Unlock()
 		for _, c := range newCachesSlice1 {
 			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+				c.Purge(time.Now().Unix() - 432000) // 5 days ago
+			} else {
+				continue
+			}
+			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
 				c.Purge(time.Now().Unix() - 86400) // 1 day ago
 			} else {
 				continue
@@ -244,6 +249,11 @@ func cleaner() {
 		newCachesSlice2 := caches2
 		cachesMutex2.Unlock()
 		for _, c := range newCachesSlice2 {
+			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+				c.Purge(time.Now().Unix() - 432000) // 5 days ago
+			} else {
+				continue
+			}
 			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
 				c.Purge(time.Now().Unix() - 86400) // 1 day ago
 			} else {
