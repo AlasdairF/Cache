@@ -109,7 +109,7 @@ func (c *Bytes) Remove(id int) {
 	if id >= c.size {
 		return
 	}
-	c.vals[id] = false
+	c.vals[id] = nil
 }
 
 // Closes the cache, releasing the memory
@@ -199,7 +199,7 @@ func (c *Interface) Remove(id int) {
 	if id >= c.size {
 		return
 	}
-	c.vals[id] = false
+	c.vals[id] = nil
 }
 
 // Closes the cache, releasing the memory
