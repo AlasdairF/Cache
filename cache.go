@@ -104,6 +104,14 @@ func (c *Bytes) Replace(id int, p []byte) {
 	}
 }
 
+// Delete an entry from the cache
+func (c *Bytes) Remove(id int) {
+	if id >= c.size {
+		return
+	}
+	c.vals[id] = false
+}
+
 // Closes the cache, releasing the memory
 func (c *Bytes) Close() {
 	c.size = 0
@@ -184,6 +192,14 @@ func (c *Interface) Replace(id int, p []byte, size int64) {
 		item.mutex.Unlock()
 		atomic.AddInt64(&c.mem, size)
 	}
+}
+
+// Delete an entry from the cache
+func (c *Interface) Remove(id int) {
+	if id >= c.size {
+		return
+	}
+	c.vals[id] = false
 }
 
 // Closes the cache, releasing the memory
