@@ -4,6 +4,7 @@ import (
 	"time"
 	"sync"
 	"sync/atomic"
+	"log"
 )
 
 const (
@@ -42,6 +43,7 @@ type Interface struct {
 
 func init() {
 	go cleaner()
+	go printlog()
 }
 
 // Creates a new cache
@@ -292,5 +294,18 @@ func cleaner() {
 			}
 		}
 		
+	}
+}
+
+// Automatically purges all caches
+func printlog() {
+	for {
+		time.Sleep(time.Hour * 6)
+		for _, c := range caches1 {
+			log.Println(`CacheBytes`, atomic.LoadInt64(&c.mem), `of`, atomic.LoadInt64(&c.max))
+		}
+		for _, c := range caches2 {
+			log.Println(`CacheInterface`, atomic.LoadInt64(&c.mem), `of`, atomic.LoadInt64(&c.max))
+		}
 	}
 }
