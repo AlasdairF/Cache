@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	sleeptime = time.Minute
+	sleeptime = time.Minute * 2
 )
 
 var caches1 []*Bytes
@@ -236,13 +236,18 @@ func cleaner() {
 		newCachesSlice1 := caches1
 		cachesMutex1.Unlock()
 		for _, c := range newCachesSlice1 {
-			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+			/*if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
 				c.Purge(time.Now().Unix() - 432000) // 5 days ago
 			} else {
 				continue
 			}
 			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
 				c.Purge(time.Now().Unix() - 86400) // 1 day ago
+			} else {
+				continue
+			}*/
+			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+				c.Purge(time.Now().Unix() - 21600) // 6 hours ago
 			} else {
 				continue
 			}
@@ -267,13 +272,18 @@ func cleaner() {
 		newCachesSlice2 := caches2
 		cachesMutex2.Unlock()
 		for _, c := range newCachesSlice2 {
-			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+			/*if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
 				c.Purge(time.Now().Unix() - 432000) // 5 days ago
 			} else {
 				continue
 			}
 			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
 				c.Purge(time.Now().Unix() - 86400) // 1 day ago
+			} else {
+				continue
+			}*/
+			if atomic.LoadInt64(&c.mem) > atomic.LoadInt64(&c.max) {
+				c.Purge(time.Now().Unix() - 21600) // 6 hours ago
 			} else {
 				continue
 			}
